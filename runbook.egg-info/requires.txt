@@ -1,0 +1,11 @@
+typer
+rich
+sqlalchemy
+docker
+anthropic
+openai
+numpy
+
+[dev]
+pytest
+pytest-asyncio
