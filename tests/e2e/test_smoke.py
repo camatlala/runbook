@@ -36,8 +36,17 @@ def test_start_turn_checkpoint_resume_roundtrip(tiny_git_repo, tmp_path):
     SessionLocal = get_sessionmaker(engine)
     db = SessionLocal()
 
+    # Bind-mount the fixture directly instead of git-cloning a file:// URL:
+    # the sandbox container runs inside Docker Desktop's Linux VM, which
+    # can't resolve a host filesystem path via `git clone file://...`.
     sandbox = SandboxManager(image="runbook-sandbox:latest")
-    container_id = sandbox.create_session(f"file://{tiny_git_repo}")
+    container = sandbox._client.containers.run(
+        "runbook-sandbox:latest",
+        detach=True,
+        working_dir="/workspace",
+        volumes={tiny_git_repo: {"bind": "/workspace", "mode": "rw"}},
+    )
+    container_id = container.id
 
     session = Session(repo_url=f"file://{tiny_git_repo}", status="running", container_id=container_id)
     db.add(session)

@@ -93,6 +93,6 @@ pytest tests/e2e -v -m e2e                   # requires Docker daemon + sandbox 
 <details>
 <summary><h2>📌 Status</h2></summary>
 
-28/29 tests passing. Only the Docker-dependent sandbox test needs a live daemon to verify — run `pytest tests/integration -v -m integration` once Docker is confirmed working.
+✅ 30/30 tests passing, verified against a real Docker daemon — sandbox, agent loop, memory, checkpoint/resume, and CLI commands all exercised end to end.
 
 </details>
