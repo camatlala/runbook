@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 import docker
 from docker.errors import NotFound
 
@@ -30,9 +31,22 @@ class SandboxManager:
 
     def exec(self, container_id: str, command: list[str], timeout: int = 60) -> ExecResult:
         container = self._client.containers.get(container_id)
-        exec_result = container.client.api.exec_create(container.id, command, workdir="/workspace")
-        output = container.client.api.exec_start(exec_result["Id"], stream=False)
-        exit_info = container.client.api.exec_inspect(exec_result["Id"])
+        exec_id = container.client.api.exec_create(container.id, command, workdir="/workspace")["Id"]
+
+        def run():
+            output = container.client.api.exec_start(exec_id, stream=False)
+            exit_info = container.client.api.exec_inspect(exec_id)
+            return output, exit_info
+
+        pool = ThreadPoolExecutor(max_workers=1)
+        future = pool.submit(run)
+        try:
+            output, exit_info = future.result(timeout=timeout)
+        except FutureTimeoutError:
+            pool.shutdown(wait=False)
+            return ExecResult(exit_code=-1, stdout="", stderr="command timed out", timed_out=True)
+        pool.shutdown(wait=False)
+
         stdout = output.decode("utf-8", errors="replace") if isinstance(output, bytes) else str(output)
         return ExecResult(exit_code=exit_info["ExitCode"] or 0, stdout=stdout, stderr="", timed_out=False)
 
